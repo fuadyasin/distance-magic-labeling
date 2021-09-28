@@ -55,7 +55,7 @@ void runDistanceAntiMagicLabeling(int n, std::vector<std::vector<int>> gr, std::
 {
 	double val = 1;
 
-	if (!(validateGraph(gr) && validateDAMGraph(gr)))
+	if (!validateDAMGraph(gr))
 	{
 		return;
 	}
@@ -83,24 +83,6 @@ void runDistanceAntiMagicLabeling(int n, std::vector<std::vector<int>> gr, std::
 		printf("]");
 		printf("\n");
 	}
-}
-
-bool validateGraph(std::vector<std::vector<int>> adjmat)
-{
-	size_t n = adjmat.size();
-	std::vector<int> w;
-	for (int i = 0; i < n; i++)
-	{
-		int sum = 0;
-		for (int j = 0; j < n; j++)
-		{
-			sum += adjmat[i][j];
-		}
-		w.push_back(sum);
-	}
-
-	int pval = std::accumulate(std::begin(w), std::end(w), 1, std::multiplies<int>());
-	return pval != 0;
 }
 
 bool validateDAMGraph(std::vector<std::vector<int>> adjmat)
