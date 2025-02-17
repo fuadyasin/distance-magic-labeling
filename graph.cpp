@@ -7,39 +7,37 @@
 std::vector<std::vector<std::vector<int>>> loadAdjMat(char* infilename, int& n)
 {
 	std::ifstream infile(infilename);
+	if (!infile.is_open())
+	{
+		std::cerr << "Error: file not found" << std::endl;
+		return {};
+	}
+
 	std::string line;
 	std::vector<std::vector<std::vector<int>>> adjmats;
 
-	if (std::getline(infile, line))
-	{
-		n = std::stoi(line);
-	}
-	int i = 1;
-	int m = 0;
-	std::vector<std::vector<int>> row;
-	while (std::getline(infile, line))
-	{
-		std::istringstream iss(line);
+    while (std::getline(infile, line))
+    {
+        if (line.find("Graph") != std::string::npos)
+        {
+            std::getline(infile, line);
+            std::vector<std::vector<int>> adjmat(n, std::vector<int>(n, 0));
 
-		if (i % (n + 1) != 0)
-		{
-			m++;
-			std::vector<int> p(0);
-			for (int j = 0; j < n; j++)
-			{
-				p.push_back(line[j] - '0');
-			}
-			row.push_back(p);
+            int i = 0;
+            do
+            {
+                for (int j = 0; j < n; ++j)
+                {
+                    adjmat[i][j] = line[j] - '0';
+                }
 
-			if (m % n == 0)
-			{
-				std::vector<std::vector<int>> buf = std::move(row);
-				adjmats.push_back(buf);
-				m = 0;
-			}
-		}
-		i++;
-	}
+                i++;
+            }
+			while (std::getline(infile, line) && !line.empty());
+
+            adjmats.push_back(adjmat);
+        }
+    }
 	infile.close();
 
 	return adjmats;

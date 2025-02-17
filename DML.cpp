@@ -7,6 +7,7 @@
 #include <iostream>
 #include <vector>
 #include <numeric>
+#include <string>
 
 void runDistanceMagicLabeling(int n, std::vector<std::vector<int>> gr, std::vector<std::vector<int>> labelPerms, std::vector<int> vlabel);
 bool validateGraph(std::vector<std::vector<int>> adjmat);
@@ -25,7 +26,7 @@ int main(int argc, char* argv[])
 	}
 	infilename = argv[1];
 
-	int n;
+	int n = std::stoi(argv[2]);
 
 	std::vector<std::vector<std::vector<int>>> adjmats = loadAdjMat(infilename, n);
 	

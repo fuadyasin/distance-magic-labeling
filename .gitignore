@@ -36,3 +36,6 @@
 
 # Output directory
 out/
+
+# Build directory
+build/
