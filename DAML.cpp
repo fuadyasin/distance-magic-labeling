@@ -7,9 +7,9 @@
 #include <iostream>
 #include <vector>
 #include <numeric>
+#include <string>
 
 void runDistanceAntiMagicLabeling(int n, std::vector<std::vector<int>> gr, std::vector<std::vector<int>> labelPerms, std::vector<int> vlabel);
-bool validateGraph(std::vector<std::vector<int>> adjmat);
 bool validateDAMGraph(std::vector<std::vector<int>> adjmat);
 double evalDistanceAntiMagic(std::vector<std::vector<int>> g, std::vector<int> vlabel, std::vector<std::vector<int>>& wg);
 void distanceAntiMagicLabeling(std::vector<std::vector<int>> adjmat, std::vector<std::vector<int>> labelPerms, std::vector<int>& rvlabel, double& rval);
@@ -24,7 +24,7 @@ int main(int argc, char* argv[])
 	}
 	infilename = argv[1];
 
-	int n;
+	int n = std::stoi(argv[2]);
 
 	std::vector<std::vector<std::vector<int>>> adjmats = loadAdjMat(infilename, n);
 

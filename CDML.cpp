@@ -1,4 +1,4 @@
-﻿// DML.cpp : Defines the entry point for the application.
+// CDML.cpp : Defines the entry point for the application.
 //
 
 #include "DML.h"
@@ -8,12 +8,16 @@
 #include <vector>
 #include <numeric>
 #include <string>
+#include <thread>
+#include <mutex>
 
-void runDistanceMagicLabeling(int n, std::vector<std::vector<int>> gr, std::vector<std::vector<int>> labelPerms, std::vector<int> vlabel);
+std::mutex printMutex;
+
+void runClosedDistanceMagicLabeling(int n, std::vector<std::vector<int>> gr, std::vector<std::vector<int>> labelPerms, std::vector<int> vlabel);
 bool validateGraph(std::vector<std::vector<int>> adjmat);
-double evalDistanceMagic(std::vector<std::vector<int>> gr, std::vector<int> vlabel);
+double evalClosedDistanceMagic(std::vector<std::vector<int>> gr, std::vector<int> vlabel);
 double stdDev(std::vector<int> val);
-void distanceMagicLabeling(std::vector<std::vector<int>> adjmat, std::vector<std::vector<int>> labelPerms, std::vector<int>& rvlabel, double& rval);
+void closedDistanceMagicLabeling(std::vector<std::vector<int>> adjmat, std::vector<std::vector<int>> labelPerms, std::vector<int>& rvlabel, double& rval);
 
 int main(int argc, char* argv[])
 {
@@ -28,7 +32,7 @@ int main(int argc, char* argv[])
 	int n = std::stoi(argv[2]);
 
 	std::vector<std::vector<std::vector<int>>> adjmats = loadAdjMat(infilename, n);
-	
+
 	size_t ng = adjmats.size();
 
 	std::vector<int> vlabel;
@@ -44,28 +48,35 @@ int main(int argc, char* argv[])
 		labelPerms.push_back(vlabel);
 	} while (std::next_permutation(vlabel.begin(), vlabel.end()));
 
+	std::vector<std::thread> threads;
 	for (int i = 0; i < ng; i++)
 	{
-		runDistanceMagicLabeling(n, adjmats[i], labelPerms, vlabel);
+		threads.emplace_back(std::thread(runClosedDistanceMagicLabeling, n, adjmats[i], labelPerms, vlabel));
+	}
+
+	for (auto& t : threads)
+	{
+		t.join();
 	}
 
 	return 0;
 }
 
-void runDistanceMagicLabeling(int n, std::vector<std::vector<int>> gr, std::vector<std::vector<int>> labelPerms, std::vector<int> vlabel)
+void runClosedDistanceMagicLabeling(int n, std::vector<std::vector<int>> gr, std::vector<std::vector<int>> labelPerms, std::vector<int> vlabel)
 {
 	double val = 1;
 
-	if (!(validateGraph(gr)))
-	{
-		return;
-	}
+	//if (!(validateGraph(gr)))
+	//{
+	//	return;
+	//}
 
-	distanceMagicLabeling(gr, labelPerms, vlabel, val);
+	closedDistanceMagicLabeling(gr, labelPerms, vlabel, val);
 
 	// val == 0 => can be labelled
 	if (val == 0)
 	{
+		std::lock_guard<std::mutex> lock(printMutex);
 		printf("adjmat: \n");
 		for (int j = 0; j < n; j++)
 		{
@@ -104,7 +115,7 @@ bool validateGraph(std::vector<std::vector<int>> adjmat)
 	return pval != 0;
 }
 
-double evalDistanceMagic(std::vector<std::vector<int>> g, std::vector<int> vlabel)
+double evalClosedDistanceMagic(std::vector<std::vector<int>> g, std::vector<int> vlabel)
 {
 	size_t n = g.size();
 	std::vector<std::vector<int>> wgr(n, std::vector<int>(n, 0));
@@ -120,7 +131,7 @@ double evalDistanceMagic(std::vector<std::vector<int>> g, std::vector<int> vlabe
 	std::vector<int> w;
 	for (int i = 0; i < n; i++)
 	{
-		int sum = 0;
+		int sum = vlabel[i];
 		for (int j = 0; j < n; j++)
 		{
 			sum += wgr[i][j];
@@ -151,10 +162,18 @@ double stdDev(std::vector<int> val)
 		sd += pow(val[i] - mean, 2);
 	}
 
-	return sqrt(sd / n);
+	double result = sqrt(sd / n);
+
+	if (result == 0)
+	{
+		std::lock_guard<std::mutex> lock(printMutex);
+		printf("k: %f\n", mean);
+	}
+
+	return result;
 }
 
-void distanceMagicLabeling(std::vector<std::vector<int>> adjmat, std::vector<std::vector<int>> labelPerms, std::vector<int>& rvlabel, double& rval)
+void closedDistanceMagicLabeling(std::vector<std::vector<int>> adjmat, std::vector<std::vector<int>> labelPerms, std::vector<int>& rvlabel, double& rval)
 {
 	size_t nVerts = adjmat.size();
 
@@ -178,7 +197,7 @@ void distanceMagicLabeling(std::vector<std::vector<int>> adjmat, std::vector<std
 	while (val != 0 && iter < maxIter)
 	{
 		vlabel = labelPerms[iter];
-		val = evalDistanceMagic(adjmat, vlabel);
+		val = evalClosedDistanceMagic(adjmat, vlabel);
 
 		iter++;
 	}
