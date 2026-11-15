@@ -3,6 +3,10 @@
 #include <algorithm>
 #include <climits>
 
+#if defined(_MSC_VER) && defined(_M_X64)
+#include <intrin.h>
+#endif
+
 const char* kindName(LabelingKind kind)
 {
 	switch (kind)
@@ -68,8 +72,8 @@ namespace
 	class Search
 	{
 	public:
-		Search(const Graph& g, LabelingKind kind)
-			: kind_(kind), n_(g.n), nbhd_(g.adj), label_(g.n, 0), sum_(g.n, 0), open_(g.n, 0)
+		Search(const Graph& g, LabelingKind kind, const LabelingVisitor& visit)
+			: kind_(kind), visit_(visit), n_(g.n), nbhd_(g.adj), label_(g.n, 0), sum_(g.n, 0), open_(g.n, 0)
 		{
 			for (int i = 0; i < n_; ++i)
 			{
@@ -85,15 +89,21 @@ namespace
 			}
 		}
 
-		bool run() { return place(0); }
-		const std::vector<int>& labels() const { return label_; }
+		// Returns the number of labelings passed to the visitor.
+		unsigned long long run()
+		{
+			place(0);
+			return count_;
+		}
 
 	private:
+		// Returns true once the visitor asks to stop.
 		bool place(int v)
 		{
 			if (v == n_)
 			{
-				return true;
+				++count_;
+				return !visit_(label_);
 			}
 			for (int l = 1; l <= n_; ++l)
 			{
@@ -224,15 +234,23 @@ namespace
 
 		static int popCount(std::uint64_t x)
 		{
+#if defined(__GNUC__) || defined(__clang__)
+			return __builtin_popcountll(x);
+#elif defined(_MSC_VER) && defined(_M_X64)
+			return static_cast<int>(__popcnt64(x));
+#else
 			int count = 0;
 			for (; x != 0; x &= x - 1)
 			{
 				++count;
 			}
 			return count;
+#endif
 		}
 
 		LabelingKind kind_;
+		const LabelingVisitor& visit_;
+		unsigned long long count_ = 0;
 		int n_;
 		std::vector<std::uint64_t> nbhd_; // the vertices that contribute to each weight
 		std::vector<int> label_;
@@ -243,11 +261,11 @@ namespace
 	};
 }
 
-bool findLabeling(const Graph& g, LabelingKind kind, std::vector<int>& labels)
+unsigned long long forEachLabeling(const Graph& g, LabelingKind kind, const LabelingVisitor& visit)
 {
 	if (g.n == 0)
 	{
-		return false;
+		return 0;
 	}
 
 	if (kind == LabelingKind::DistanceMagic)
@@ -256,7 +274,7 @@ bool findLabeling(const Graph& g, LabelingKind kind, std::vector<int>& labels)
 		{
 			if (g.adj[i] == 0)
 			{
-				return false;
+				return 0;
 			}
 		}
 	}
@@ -267,15 +285,24 @@ bool findLabeling(const Graph& g, LabelingKind kind, std::vector<int>& labels)
 		std::sort(rows.begin(), rows.end());
 		if (std::adjacent_find(rows.begin(), rows.end()) != rows.end())
 		{
-			return false;
+			return 0;
 		}
 	}
 
-	Search search(g, kind);
-	if (!search.run())
+	Search search(g, kind, visit);
+	return search.run();
+}
+
+bool findLabeling(const Graph& g, LabelingKind kind, std::vector<int>& labels)
+{
+	return forEachLabeling(g, kind, [&](const std::vector<int>& found)
 	{
+		labels = found;
 		return false;
-	}
-	labels = search.labels();
-	return true;
+	}) != 0;
+}
+
+unsigned long long countLabelings(const Graph& g, LabelingKind kind)
+{
+	return forEachLabeling(g, kind, [](const std::vector<int>&) { return true; });
 }

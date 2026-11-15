@@ -94,6 +94,44 @@ Graph parseGraph6(const std::string& text)
 	return g;
 }
 
+std::string toGraph6(const Graph& g)
+{
+	std::string out;
+	if (g.n <= 62)
+	{
+		out.push_back(static_cast<char>(63 + g.n));
+	}
+	else
+	{
+		out.push_back('~');
+		out.push_back(static_cast<char>(63 + ((g.n >> 12) & 63)));
+		out.push_back(static_cast<char>(63 + ((g.n >> 6) & 63)));
+		out.push_back(static_cast<char>(63 + (g.n & 63)));
+	}
+
+	// The upper triangle, column by column, six bits per character.
+	unsigned cur = 0;
+	int nBits = 0;
+	for (int j = 1; j < g.n; ++j)
+	{
+		for (int i = 0; i < j; ++i)
+		{
+			cur = (cur << 1) | (g.hasEdge(i, j) ? 1U : 0U);
+			if (++nBits == 6)
+			{
+				out.push_back(static_cast<char>(63 + cur));
+				cur = 0;
+				nBits = 0;
+			}
+		}
+	}
+	if (nBits != 0)
+	{
+		out.push_back(static_cast<char>(63 + (cur << (6 - nBits))));
+	}
+	return out;
+}
+
 bool GraphReader::getLine(std::string& line)
 {
 	if (hasPending_)

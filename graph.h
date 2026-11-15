@@ -21,6 +21,9 @@ struct Graph
 // Throws std::runtime_error on malformed input.
 Graph parseGraph6(const std::string& line);
 
+// Encodes a graph as a graph6 string (without header or newline).
+std::string toGraph6(const Graph& g);
+
 // Streams graphs from text input, one at a time. Two formats are recognised
 // and may be mixed freely:
 //   * graph6, one graph per line (the output of nauty's geng)

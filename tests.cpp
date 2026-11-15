@@ -73,7 +73,28 @@ namespace
 		return false;
 	}
 
-	void checkAgainstBruteForce(const Graph& g)
+	// Reference implementation: every valid labeling in lexicographic order.
+	std::vector<std::vector<int>> bruteForceAll(const Graph& g, LabelingKind kind)
+	{
+		std::vector<std::vector<int>> all;
+		if (kind == LabelingKind::DistanceMagic &&
+			std::find(g.adj.begin(), g.adj.end(), std::uint64_t{0}) != g.adj.end())
+		{
+			return all;
+		}
+		std::vector<int> perm(g.n);
+		std::iota(perm.begin(), perm.end(), 1);
+		do
+		{
+			if (isValidLabeling(g, kind, perm))
+			{
+				all.push_back(perm);
+			}
+		} while (std::next_permutation(perm.begin(), perm.end()));
+		return all;
+	}
+
+	void checkAgainstBruteForce(const Graph& g, bool checkAll)
 	{
 		for (LabelingKind kind : kAllKinds)
 		{
@@ -84,6 +105,20 @@ namespace
 			if (expectedFound && actualFound)
 			{
 				CHECK(expected == actual);
+			}
+
+			if (checkAll)
+			{
+				std::vector<std::vector<int>> found;
+				const unsigned long long count = forEachLabeling(g, kind, [&](const std::vector<int>& labels)
+				{
+					found.push_back(labels);
+					return true;
+				});
+				const std::vector<std::vector<int>> all = bruteForceAll(g, kind);
+				CHECK(found == all);
+				CHECK(count == all.size());
+				CHECK(countLabelings(g, kind) == all.size());
 			}
 		}
 	}
@@ -154,6 +189,16 @@ namespace
 		CHECK(findLabeling(k66, LabelingKind::DistanceMagic, labels));
 		CHECK(isValidLabeling(k66, LabelingKind::DistanceMagic, labels));
 		CHECK(vertexWeights(k66, LabelingKind::DistanceMagic, labels)[0] == 39);
+
+		// K_n: every permutation is closed distance magic and antimagic.
+		CHECK(countLabelings(completeGraph(5), LabelingKind::ClosedDistanceMagic) == 120);
+		CHECK(countLabelings(completeGraph(5), LabelingKind::DistanceAntimagic) == 120);
+		CHECK(countLabelings(c4, LabelingKind::DistanceMagic) == 8);
+
+		// The visitor can stop the search early.
+		int seen = 0;
+		CHECK(forEachLabeling(completeGraph(5), LabelingKind::DistanceAntimagic,
+			[&](const std::vector<int>&) { return ++seen < 3; }) == 3);
 	}
 
 	void testIsValidLabeling()
@@ -194,6 +239,37 @@ namespace
 		CHECK(reader.next(g) && g.n == 4 && g.adj == completeGraph(4).adj);
 		CHECK(!reader.next(g));
 
+		// graph6 encoding round-trips, including orders that need padding
+		// and the four-byte form for orders above 62.
+		std::mt19937 rng(7);
+		for (int n : {0, 1, 2, 3, 4, 5, 7, 12, 62, 63, 64})
+		{
+			Graph h;
+			h.n = n;
+			h.adj.assign(n, 0);
+			std::bernoulli_distribution edge(0.5);
+			for (int j = 1; j < n; ++j)
+			{
+				for (int i = 0; i < j; ++i)
+				{
+					if (edge(rng))
+					{
+						h.adj[i] |= std::uint64_t{1} << j;
+						h.adj[j] |= std::uint64_t{1} << i;
+					}
+				}
+			}
+			if (n == 0)
+			{
+				CHECK(toGraph6(h) == "?");
+				continue;
+			}
+			const Graph back = parseGraph6(toGraph6(h));
+			CHECK(back.n == n && back.adj == h.adj);
+		}
+		CHECK(toGraph6(completeGraph(4)) == "C~");
+		CHECK(toGraph6(makeGraph(4, {{0, 1}, {1, 2}, {2, 3}, {0, 3}})) == "Cl");
+
 		CHECK(readFails("C\n"));                       // graph6 too short
 		CHECK(readFails("C~~\n"));                     // graph6 too long
 		CHECK(readFails("C \n"));                      // invalid graph6 character
@@ -226,7 +302,7 @@ namespace
 						}
 					}
 				}
-				checkAgainstBruteForce(makeGraph(n, edges));
+				checkAgainstBruteForce(makeGraph(n, edges), true);
 			}
 		}
 
@@ -248,7 +324,7 @@ namespace
 						}
 					}
 				}
-				checkAgainstBruteForce(makeGraph(n, edges));
+				checkAgainstBruteForce(makeGraph(n, edges), n <= 7);
 			}
 		}
 	}

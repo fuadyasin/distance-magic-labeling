@@ -26,7 +26,7 @@ ctest --test-dir build -C Release
 ## Usage
 
 ```
-./DML [-j threads] <file | -> [n]
+./DML [-j threads] [-a | -c | -v] [-g] <file | -> [n]
 ```
 
 `CDML` and `DAML` take the same arguments.
@@ -39,6 +39,15 @@ ctest --test-dir build -C Release
 - `n` is optional. The order of each graph is read from the input; when `n` is
   given the program stops with an error if a graph has a different order.
 - `-j` sets the number of worker threads (default: all cores).
+- `-a` prints every labeling of each graph, in lexicographic order, not just
+  the smallest. All the labelings of a graph are held in memory until it is
+  printed, so this can use a lot of memory on graphs with very many labelings.
+- `-c` prints the number of labelings of each graph instead of a labeling.
+- `-v` inverts the selection: prints the graphs that have *no* labeling.
+- `-g` prints one tab-separated line per result, starting with the graph in
+  graph6, instead of the adjacency matrix (see below).
+
+`-a`, `-c` and `-v` cannot be combined.
 
 For example, to check every connected graph on 8 vertices:
 
@@ -58,7 +67,7 @@ showg -a graphs.g6 graphs.txt
 
 Each graph that has a labeling is printed to standard output, in input order,
 with its adjacency matrix and the labeling found (`label[i]` is the label of
-vertex `i`). `CDML` also prints the magic constant `k` first.
+vertex `i`). `DML` and `CDML` also print the magic constant `k`.
 
 ```
 adjmat: 
@@ -66,11 +75,27 @@ adjmat:
 1 0 1 0 
 0 1 0 1 
 1 0 1 0 
+k: 5
 label: [ 1 2 4 3 ]
 ```
 
+With `-a` the `k:`/`label:` pair is repeated for each labeling; with `-c` it
+is replaced by `count: N`; with `-v` only the adjacency matrix is printed.
+
+With `-g` each result is a single tab-separated line:
+
+| Mode       | `DML`, `CDML`             | `DAML`              |
+| ---------- | ------------------------- | ------------------- |
+| default/`-a` | `graph6  k  l1 l2 ... ln` | `graph6  l1 l2 ... ln` |
+| `-c`       | `graph6  count`           | `graph6  count`     |
+| `-v`       | `graph6`                  | `graph6`            |
+
+So `geng -c 8 | ./DML -v -g -` produces a graph6 file that can be fed
+straight back into nauty tools or into another of these programs.
+
 A summary line (`3 of 64 graphs have a distance magic labeling`) goes to
 standard error, so redirecting standard output captures only the results.
+With `-a`/`-c` it also gives the total number of labelings.
 
 ## Notes
 
